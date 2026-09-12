@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from __future__ import annotations
 
 import math
@@ -10,6 +8,8 @@ import time
 import types
 from collections.abc import Iterator
 from random import randint
+from types import TracebackType
+from typing import Self
 
 from laser_prynter.colour.c import RGBColour
 from laser_prynter.colour.gradient import RGBGradient
@@ -185,7 +185,7 @@ class PBar:
 
         self._print_info()
 
-    def __enter__(self) -> PBar:
+    def __enter__(self) -> Self:
         self.start_time = time.time()
         _print_to_terminal(
             '\x1b[?25l'  # hide cursor
@@ -198,7 +198,7 @@ class PBar:
 
     @staticmethod
     def _reset_terminal() -> None:
-        w, h = _get_terminal_size()
+        _w, h = _get_terminal_size()
         _print_to_terminal(
             '\x1b[?25h'  # show cursor
             f'\x1b[0;{h}r'  # reset margins
@@ -206,7 +206,7 @@ class PBar:
             '\n'
         )
 
-    def __exit__(self, _exc_type: type, _exc_val: BaseException, _exc_tb: type) -> None:
+    def __exit__(self, _exc_type: type[BaseException] | None, _exc_val: BaseException | None, _exc_tb: TracebackType | None) -> None:
         self._reset_terminal()
 
 
