@@ -174,6 +174,15 @@ def pps(s: str, style: str='yellow', random_style: bool=False) -> None:
     'pretty-print a string'
     _print(ps(s, style=style, random_style=random_style))
 
+def ppf(d_obj: Any, style: str='dracula', random_style: bool=False, **kwargs: Any) -> None:
+    'pretty-print a flattened/tabulated row'
+    _print(
+        highlight(
+            '\t'.join(map(str, flatten(d_obj).values())),
+            ColumnTabulateLexer(),
+            Terminal256Formatter(style=ColumnStyle),
+        ).strip()
+    )
 
 def demo(all_styles: bool=False, **kwargs: Any) -> None:
     'demonstrate pretty-printing colours'
