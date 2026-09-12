@@ -1,20 +1,37 @@
 #!/usr/bin/env python3
 
+import io
 import json
-from itertools import chain
+import sys
+from collections.abc import Generator
+from typing import Any
 
-from tabulate import tabulate
+from pygments import highlight
+from pygments.formatters import Terminal256Formatter
 
-def flatten(d: dict, prefix: str = "") -> dict:
-    def pairs(d, prefix):
-        return chain.from_iterable(
-            pairs(v, f'{prefix}{k}.') if isinstance(v, dict) else [(f'{prefix}{k}', v)] for k, v in d.items()
-        )
-    return dict(pairs(d, prefix))
+from laser_prynter.pp import ColumnStyle, ColumnTabulateLexer, flatten
 
-lines = []
-with open('test_logs.txt') as istream:
-    for l in istream:
-        lines.append(list(flatten(json.loads(l.strip())).values()))
 
-print(tabulate(lines))
+def parse_stream(stream: io.TextIOBase) -> Generator[list, None, None]:
+    for line in stream:
+        try:
+            yield list(map(str, flatten(json.loads(line.strip())).values()))
+        except json.JSONDecodeError:
+            print(f"Error: Invalid JSON line: {line}", file=sys.stderr)
+
+
+def open_stream() -> Any:
+    if len(sys.argv) > 1:
+        return open(sys.argv[1], 'r')
+    else:
+        return sys.stdin
+
+
+for parsed in parse_stream(open_stream()):
+    print(
+        highlight(
+            '\t'.join(parsed),
+            ColumnTabulateLexer(),
+            Terminal256Formatter(style=ColumnStyle),
+        ).strip()
+    )
