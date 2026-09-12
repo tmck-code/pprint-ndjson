@@ -32,7 +32,8 @@ preview = true
 
 [tool.ruff.lint]
 fixable = ["ALL"]
-dummy-variable-rgx = "^_$" # ignore variables named "_".
+# ignore variable names that start with an underscore or are all underscores
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]
 quote-style = "preserve" # keep existing quote style (single or double)
