@@ -3,23 +3,24 @@ from __future__ import annotations
 import operator
 import os
 import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
-from itertools import chain, repeat, starmap
-from typing import Dict, Iterable, Iterator, List, Literal, TypeAlias
+from itertools import chain, repeat
+from typing import Literal, TypeAlias
 
 from laser_prynter.colour import c
 
 Cell: TypeAlias = c.ANSIColour
-Row = List[Cell]
+Row = list[Cell]
 
 
 @dataclass
 class Face:
-    rows: List[Row]
+    rows: list[Row]
     with_rotations: bool = True
-    rotations: List[Face] = field(default_factory=list)
-    flipped_rotations: List[Face] = field(default_factory=list)
+    rotations: list[Face] = field(default_factory=list)
+    flipped_rotations: list[Face] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.with_rotations:
@@ -27,7 +28,7 @@ class Face:
             self.flipped_rotations = [Face._rot90(self.rows, n, flip=True) for n in range(4)]
 
     @staticmethod
-    def _rot90(rows: List[Row], n: int = 1, flip: bool = False) -> Face:
+    def _rot90(rows: list[Row], n: int = 1, flip: bool = False) -> Face:
         'Rotate a matrix 90 degrees, n times, optionally flipped'
         if flip:
             rows = list(reversed(rows))
@@ -60,7 +61,7 @@ class Face:
         for row in self.__iter__():
             p = [cell.colorise(' ' * cell_width) for cell in row]
             # r = [cell.colorise(f'{cell.ansi_n:^{cell_width}}') for cell in row]
-            r = [cell.colorise(f'{str(cell.rgb):^{cell_width}}') for cell in row]
+            r = [cell.colorise(f'{cell.rgb!s:^{cell_width}}') for cell in row]
 
             for r in chain(repeat(p, padding_top), [r], repeat(p, padding_bottom)):
                 yield ''.join(r)
@@ -121,7 +122,7 @@ class Faces:
 
 
 def distance(c1: tuple[int, int, int], c2: tuple[int, int, int]) -> float:
-    return float(abs(sum(starmap(operator.sub, zip(c2, c1)))))
+    return float(abs(sum(map(operator.sub, c2, c1))))
 
 
 @dataclass
@@ -155,17 +156,11 @@ class RGBCube:
                 for flip in (False, True):
                     if edge_type == 'ts' and RGBCube.compare_rows(
                         face.rot90(rot, flip=flip)[-1], edge
-                    ):
-                        return face.rot90(rot, flip=flip)
-                    elif edge_type == 'bs' and RGBCube.compare_rows(
+                    ) or edge_type == 'bs' and RGBCube.compare_rows(
                         face.rot90(rot, flip=flip)[0], edge
-                    ):
-                        return face.rot90(rot, flip=flip)
-                    elif edge_type == 'lhs' and RGBCube.compare_rows(
+                    ) or edge_type == 'lhs' and RGBCube.compare_rows(
                         [r[-1] for r in face.rot90(rot, flip=flip)], edge
-                    ):
-                        return face.rot90(rot, flip=flip)
-                    elif edge_type == 'rhs' and RGBCube.compare_rows(
+                    ) or edge_type == 'rhs' and RGBCube.compare_rows(
                         [r[0] for r in face.rot90(rot, flip=flip)], edge
                     ):
                         return face.rot90(rot, flip=flip)
@@ -197,7 +192,7 @@ class RGBCube:
 
 @dataclass
 class RGBCubeCollection:
-    cubes: Dict[str, RGBCube]
+    cubes: dict[str, RGBCube]
 
     def __post_init__(self) -> None:
         self.width = os.get_terminal_size().columns
@@ -209,8 +204,8 @@ class RGBCubeCollection:
         padding_bottom: int = 0,
         cell_width: int = 6,
     ) -> None:
-        groups: List[Dict[str, RGBCube]] = []
-        current_group: Dict[str, RGBCube] = {}
+        groups: list[dict[str, RGBCube]] = []
+        current_group: dict[str, RGBCube] = {}
         for name, cube in self.cubes.items():
             if sum(v.str_width for v in current_group.values()) + cube.str_width <= self.width:
                 current_group[name] = cube
@@ -240,8 +235,7 @@ def find_face_with_edge(
             return f, n
         except ValueError:
             continue
-    else:
-        raise ValueError('No face with matching edge found')
+    raise ValueError('No face with matching edge found')
 
 
 def create_cube(f1: Face, f1_name: str, cube_collection: RGBCubeCollection) -> None:
@@ -292,7 +286,7 @@ class Gradient:
                 list(
                     map(
                         lambda x: x / (n_steps - 1),
-                        range(0, n_steps),
+                        range(n_steps),
                     )
                 ),
             )
@@ -304,9 +298,9 @@ class Gradient:
     ) -> list[tuple[float, ...]]:
         return list(
             zip(
-                *starmap(
+                *map(
                     Gradient.interp,
-                    zip(c1, c2, repeat(n_steps)),
+                    c1, c2, repeat(n_steps)
                 )
             )
         )

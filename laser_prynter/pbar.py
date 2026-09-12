@@ -8,8 +8,8 @@ import signal
 import sys
 import time
 import types
+from collections.abc import Iterator
 from random import randint
-from typing import Iterator
 
 from laser_prynter.colour.c import RGBColour
 from laser_prynter.colour.gradient import RGBGradient

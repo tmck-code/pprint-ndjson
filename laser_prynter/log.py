@@ -26,15 +26,16 @@ usage examples to log messages:
     ```
 '''
 
-from datetime import datetime
 import json
 import logging
-from logging.handlers import  TimedRotatingFileHandler
 import os
 import sys
+from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 from typing import Any, TextIO
 
 from laser_prynter.pp import _json_default
+
 
 class LogLevel:
     'An enum type for log levels.'

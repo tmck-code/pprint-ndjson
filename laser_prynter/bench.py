@@ -23,16 +23,17 @@ bench.bench(
 )
 '''
 
+import operator
+import os
+import pickle
+import statistics
+import sys
+import time
 from collections import Counter, namedtuple
+from collections.abc import Callable
 from functools import lru_cache, wraps
 from itertools import chain
-import operator
-import pickle
-import time
-import sys
-import os
-from typing import Callable, Any
-import statistics
+from typing import Any
 
 from laser_prynter import pp
 
@@ -135,25 +136,10 @@ def gen_border() -> str:
 
 def _print_header(s: str, test: Test) -> None:
     'Print the result of a timed test'
-    print('\n{s:s}{border:s}\n\n{n_s:s}: {n:,d}, {args_s:s}: {args:20s}{kwargs_s:s}: {kwargs:20s}\n'.format(**{
-        's':        s,
-        'border':   pp.ps(gen_border(), 'brightyellow'),
-        'n_s':      pp.ps('n', 'bold'),
-        'n':        test.n,
-        'args_s':   pp.ps('args', 'bold'),
-        'args':     _truncate(str(test.args)+', '),
-        'kwargs_s': pp.ps('kwargs', 'bold'),
-        'kwargs':   _truncate(str(test.kwargs)),
-    }))
+    print('\n{s:s}{border:s}\n\n{n_s:s}: {n:,d}, {args_s:s}: {args:20s}{kwargs_s:s}: {kwargs:20s}\n'.format(s=s, border=pp.ps(gen_border(), 'brightyellow'), n_s=pp.ps('n', 'bold'), n=test.n, args_s=pp.ps('args', 'bold'), args=_truncate(str(test.args)+', '), kwargs_s=pp.ps('kwargs', 'bold'), kwargs=_truncate(str(test.kwargs))))
 
 def _print_result_header(width: int=1) -> None:
-    msg = '{funcs:s}{status:<5s} {sep:s} {total:^10s} {sep:s} {median:^10s}'.format(**{
-        'funcs':  f'{"function":<{width}s}'.format('function'),
-        'status': 'status',
-        'total':  'Σ ',
-        'median': 'x̄',
-        'sep':     HEADER_SEP,
-    })
+    msg = '{funcs:s}{status:<5s} {sep:s} {total:^10s} {sep:s} {median:^10s}'.format(funcs=f'{"function":<{width}s}'.format('function'), status='status', total='Σ ', median='x̄', sep=HEADER_SEP)
     border = BORDER_SEP*len(msg)
     print(msg, border, sep='\n')
 
@@ -165,16 +151,7 @@ def _print_result(func: Callable, result: Any, correct: bool, times: Counter, wi
         result = _truncate(str(result))
         status_msg = pp.ps(f'{fail_sep}>> {result=}', 'yellow')
 
-    msg = '{func_name:s}{status:<s}   {sep:s} {total:s} {sep:s} {median:s} {extra:s}{status_msg:s}'.format(**{
-        'func_name':  pp.ps(f'{func.__module__+"."+func.__name__+", ":<{width}s}', style=colour),
-        'total':      _format_time(_sum_times(times)),
-        'median':     _format_time(_median_times(times)),
-        'status':     TEST_STATUS[correct],
-        'extra':      extra,
-        'status_msg': status_msg,
-        'width':      width+2,
-        'sep':        RECORD_SEP,
-    })
+    msg = '{func_name:s}{status:<s}   {sep:s} {total:s} {sep:s} {median:s} {extra:s}{status_msg:s}'.format(func_name=pp.ps(f'{func.__module__+"."+func.__name__+", ":<{width}s}', style=colour), total=_format_time(_sum_times(times)), median=_format_time(_median_times(times)), status=TEST_STATUS[correct], extra=extra, status_msg=status_msg, width=width+2, sep=RECORD_SEP)
     print(msg)
 
 

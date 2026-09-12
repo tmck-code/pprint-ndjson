@@ -1,15 +1,16 @@
-from dataclasses import asdict, is_dataclass
-from datetime import datetime
 import json
 import random
 import sys
+from collections.abc import Iterator
+from dataclasses import asdict, is_dataclass
+from datetime import datetime
 from types import FunctionType
-from typing import cast, Any, Iterator, NamedTuple, TextIO
+from typing import Any, NamedTuple, TextIO, cast
 
-from pygments import highlight, console
-from pygments.lexers import JsonLexer
+from pygments import console, highlight
 from pygments.formatters import Terminal256Formatter
-from pygments.styles import get_style_by_name, get_all_styles
+from pygments.lexers import JsonLexer
+from pygments.styles import get_all_styles, get_style_by_name
 
 STYLES = (
     'dracula', 'fruity', 'gruvbox-dark', 'gruvbox-light', 'lightbulb', 'material', 'native',
@@ -49,7 +50,6 @@ def _normalise(obj: object) -> Any:
         return cast(NamedTuple, obj)._asdict()
     return obj
 
-# ruff: disable[E701]
 def _json_default(obj: object) -> Any:
     'Default JSON serializer, supports most main class types'
     if   isinstance(obj, str):          return obj # str
