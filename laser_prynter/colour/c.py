@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from random import randint
 from types import MappingProxyType
-from typing import Any, Literal, NamedTuple, Tuple, TypeAlias
+from typing import Any, Literal, NamedTuple
 
 # Valid components of an RGB tuple.
-_RGB_COMPONENT: TypeAlias = Literal['r', 'g', 'b']
-_RGB_COMPONENTS: Tuple[_RGB_COMPONENT, _RGB_COMPONENT, _RGB_COMPONENT] = ('r', 'g', 'b')
+type _RGB_COMPONENT = Literal['r', 'g', 'b']
+_RGB_COMPONENTS: tuple[_RGB_COMPONENT, _RGB_COMPONENT, _RGB_COMPONENT] = ('r', 'g', 'b')
 
 # Multipliers for each component of the RGB tuple in the ANSI colour code formula.
 _RGB_COMPONENT_MULTIPLIER: MappingProxyType[_RGB_COMPONENT, int] = MappingProxyType({
@@ -60,14 +60,12 @@ def cube_coords_to_ansi(r: int, g: int, b: int) -> int:
     232-255:  grayscale from dark to light in 24 steps
     '''
     return 16 + (
-        r * _RGB_COMPONENT_MULTIPLIER['r']
-        + g * _RGB_COMPONENT_MULTIPLIER['g']
-        + b * _RGB_COMPONENT_MULTIPLIER['b']
+        r * _RGB_COMPONENT_MULTIPLIER['r'] + g * _RGB_COMPONENT_MULTIPLIER['g'] + b * _RGB_COMPONENT_MULTIPLIER['b']
     )
 
 
 # Valid (supported) ANSI styles.
-_ANSI_STYLES: TypeAlias = Literal['fg', 'bg']
+type _ANSI_STYLES = Literal['fg', 'bg']
 _ANSI_ESCAPE_CODES: MappingProxyType[_ANSI_STYLES, str] = MappingProxyType({
     'fg': '38;5',
     'bg': '48;5',

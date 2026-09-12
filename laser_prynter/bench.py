@@ -23,22 +23,26 @@ bench.bench(
 )
 '''
 
+import operator
+import os
+import pickle
+import statistics
+import sys
+import time
 from collections import Counter, namedtuple
+from collections.abc import Callable
 from functools import lru_cache, wraps
 from itertools import chain
-import operator
-import pickle
-import time
-import sys
-import os
-from typing import Callable, Any
-import statistics
+from typing import Any
 
 from laser_prynter import pp
 
 Test = namedtuple('Test', 'args kwargs expected n')
+
+
 class NoExpectation:
     'Denotes that a test/benchmark has no expected result (i.e. just benchmark it)'
+
 
 def set_function_module(func: Callable) -> None:
     'Set the module of a function'
@@ -52,9 +56,11 @@ def set_function_module(func: Callable) -> None:
         # if the module is not a file, set the module to the current directory
         func.__module__ = os.path.basename(os.getcwd())
 
+
 @lru_cache
 def _load_serialised_args(serialised_args: bytes) -> Any:
     return pickle.loads(serialised_args)
+
 
 def timeit_func(func: Callable, args: tuple, kwargs: dict, expected: object = NoExpectation, n: int = 10_000) -> tuple:
     'Time a function with arguments and return the result, whether it is correct, and the times'
@@ -73,37 +79,50 @@ def timeit_func(func: Callable, args: tuple, kwargs: dict, expected: object = No
         try:
             start = time.time()
             func(*_load_serialised_args(args_ser), **kwargs)
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001
+            pp.ppd({
+                'func': func,
+                'args': args,
+                'kwargs': kwargs,
+                'expected': expected,
+                'n': n,
+                'error': {'class': e.__class__, 'message': str(e)},
+            })
         finally:
-            times[time.time()-start] += 1
+            times[time.time() - start] += 1
     try:
         result = func(*pickle.loads(args_ser), **kwargs)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         result = e
     return result, expected is NoExpectation or result == expected, times
+
 
 def _sum_times(times: Counter[float]) -> float:
     'sum the values*counts in a Counter'
     return float(sum(map(operator.mul, *zip(*times.items()))))
 
+
 def _avg_times(times: Counter[float]) -> float:
     return _sum_times(times) / times.total()
+
 
 def _median_times(times: Counter[float]) -> float:
     return statistics.median(list(times.elements()))
 
+
 TEST_STATUS = {
     False: pp.ps('fail', 'red'),
-    True:  pp.ps('pass', 'green'),
+    True: pp.ps('pass', 'green'),
 }
 TRUNCATE = 40
 
-def _truncate(s: str, n: int=TRUNCATE) -> str:
+
+def _truncate(s: str, n: int = TRUNCATE) -> str:
     'Truncate a string to n characters'
     if len(s) <= n:
         return s
-    return s[:n-10] + '...' + str(s)[-10:]
+    return s[: n - 10] + '...' + str(s)[-10:]
+
 
 def _format_time(i: float) -> str:
     '''
@@ -116,48 +135,51 @@ def _format_time(i: float) -> str:
         if i >= 1:
             unit = u
             break
-        i = i*10**3
+        i = i * 10**3
     return f'{i:7.03f} {unit}'
+
 
 RECORD_SEP = '│'
 BORDER_SEP = '─'
 HEADER_SEP = '┆'
 BORDER_END, BORDER_PATTERN = '★', '-⎽__⎽-⎻⎺⎺⎻'
 
+
 def gen_border() -> str:
     w = os.get_terminal_size().columns
-    n = int(w/len(BORDER_PATTERN))
-    r = max(int(n%len(BORDER_PATTERN)/2)-1, 0)
-    b = (f'{BORDER_END}{" "*r}{BORDER_PATTERN*n}{" "*r}{BORDER_END}'
-        f'\n{BORDER_SEP*w}')
+    n = int(w / len(BORDER_PATTERN))
+    r = max(int(n % len(BORDER_PATTERN) / 2) - 1, 0)
+    b = f'{BORDER_END}{" " * r}{BORDER_PATTERN * n}{" " * r}{BORDER_END}\n{BORDER_SEP * w}'
     return b
 
 
 def _print_header(s: str, test: Test) -> None:
     'Print the result of a timed test'
-    print('\n{s:s}{border:s}\n\n{n_s:s}: {n:,d}, {args_s:s}: {args:20s}{kwargs_s:s}: {kwargs:20s}\n'.format(**{
-        's':        s,
-        'border':   pp.ps(gen_border(), 'brightyellow'),
-        'n_s':      pp.ps('n', 'bold'),
-        'n':        test.n,
-        'args_s':   pp.ps('args', 'bold'),
-        'args':     _truncate(str(test.args)+', '),
-        'kwargs_s': pp.ps('kwargs', 'bold'),
-        'kwargs':   _truncate(str(test.kwargs)),
-    }))
+    print(
+        '\n{s:s}{border:s}\n\n{n_s:s}: {n:,d}, {args_s:s}: {args:20s}{kwargs_s:s}: {kwargs:20s}\n'.format(
+            s=s,
+            border=pp.ps(gen_border(), 'brightyellow'),
+            n_s=pp.ps('n', 'bold'),
+            n=test.n,
+            args_s=pp.ps('args', 'bold'),
+            args=_truncate(str(test.args) + ', '),
+            kwargs_s=pp.ps('kwargs', 'bold'),
+            kwargs=_truncate(str(test.kwargs)),
+        )
+    )
 
-def _print_result_header(width: int=1) -> None:
-    msg = '{funcs:s}{status:<5s} {sep:s} {total:^10s} {sep:s} {median:^10s}'.format(**{
-        'funcs':  f'{"function":<{width}s}'.format('function'),
-        'status': 'status',
-        'total':  'Σ ',
-        'median': 'x̄',
-        'sep':     HEADER_SEP,
-    })
-    border = BORDER_SEP*len(msg)
+
+def _print_result_header(width: int = 1) -> None:
+    msg = '{funcs:s}{status:<5s} {sep:s} {total:^10s} {sep:s} {median:^10s}'.format(
+        funcs=f'{"function":<{width}s}'.format('function'), status='status', total='Σ ', median='x̄', sep=HEADER_SEP
+    )
+    border = BORDER_SEP * len(msg)
     print(msg, border, sep='\n')
 
-def _print_result(func: Callable, result: Any, correct: bool, times: Counter, width: int=1, colour: str='', extra: Any='') -> None:
+
+def _print_result(
+    func: Callable, result: Any, correct: bool, times: Counter, width: int = 1, colour: str = '', extra: Any = ''
+) -> None:
     fail_sep, status_msg = '\n', ''
     if not correct:
         if os.get_terminal_size().columns >= 100:
@@ -165,31 +187,33 @@ def _print_result(func: Callable, result: Any, correct: bool, times: Counter, wi
         result = _truncate(str(result))
         status_msg = pp.ps(f'{fail_sep}>> {result=}', 'yellow')
 
-    msg = '{func_name:s}{status:<s}   {sep:s} {total:s} {sep:s} {median:s} {extra:s}{status_msg:s}'.format(**{
-        'func_name':  pp.ps(f'{func.__module__+"."+func.__name__+", ":<{width}s}', style=colour),
-        'total':      _format_time(_sum_times(times)),
-        'median':     _format_time(_median_times(times)),
-        'status':     TEST_STATUS[correct],
-        'extra':      extra,
-        'status_msg': status_msg,
-        'width':      width+2,
-        'sep':        RECORD_SEP,
-    })
+    msg = '{func_name:s}{status:<s}   {sep:s} {total:s} {sep:s} {median:s} {extra:s}{status_msg:s}'.format(
+        func_name=pp.ps(f'{func.__module__ + "." + func.__name__ + ", ":<{width}s}', style=colour),
+        total=_format_time(_sum_times(times)),
+        median=_format_time(_median_times(times)),
+        status=TEST_STATUS[correct],
+        extra=extra,
+        status_msg=status_msg,
+        sep=RECORD_SEP,
+    )
     print(msg)
 
 
-def timeit(n: int=10_000) -> Callable[[Callable], Callable]:
+def timeit(n: int = 10_000) -> Callable[[Callable], Callable]:
     'Decorator to time a function'
+
     def decorator_with_args(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: tuple, **kwargs: dict) -> None:
             result, correct, times = timeit_func(func, args, kwargs, NoExpectation, n)
             _print_result(func, result, correct, times)
+
         return wrapper
+
     return decorator_with_args
 
 
-def bench(tests: list, func_groups: list, n: int=10_000, sort: bool=False) -> None:
+def bench(tests: list, func_groups: list, n: int = 10_000, sort: bool = False) -> None:
     'Run a series of timed tests on a list of functions'
     s, group_colours = '', ['yellow', 'brightred', 'cyan', 'bold']
 
@@ -198,7 +222,7 @@ def bench(tests: list, func_groups: list, n: int=10_000, sort: bool=False) -> No
     for func_group in func_groups:
         for func in func_group:
             set_function_module(func)
-    width = max(len(func.__module__)+len(func.__name__)+3 for func in chain.from_iterable(func_groups))
+    width = max(len(func.__module__) + len(func.__name__) + 3 for func in chain.from_iterable(func_groups))
 
     if 'BENCH_SORT' in os.environ:
         sort = True
@@ -220,7 +244,7 @@ def bench(tests: list, func_groups: list, n: int=10_000, sort: bool=False) -> No
             base = 0.0
             extra = ''
 
-            for _, result_tuple in enumerate(sorted(results, key=lambda r: _median_times(r[3]))): 
+            for _, result_tuple in enumerate(sorted(results, key=lambda r: _median_times(r[3]))):
                 if not result_tuple[2]:
                     continue
                 if base == 0:
@@ -228,5 +252,13 @@ def bench(tests: list, func_groups: list, n: int=10_000, sort: bool=False) -> No
                 else:
                     x = _median_times(result_tuple[3]) / base
                     extra = pp.ps(f' ↓ x{x:.2f}', 'bold')
-                _print_result(result_tuple[0], result_tuple[1], result_tuple[2], result_tuple[3], result_tuple[4], result_tuple[5], extra=extra)
+                _print_result(
+                    result_tuple[0],
+                    result_tuple[1],
+                    result_tuple[2],
+                    result_tuple[3],
+                    result_tuple[4],
+                    result_tuple[5],
+                    extra=extra,
+                )
         s = '\n'

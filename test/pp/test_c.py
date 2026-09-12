@@ -2,6 +2,7 @@ import unittest
 
 from laser_prynter.colour import c
 
+
 class TestC(unittest.TestCase):
     def test_ansi_to_rgb(self) -> None:
         expected = {

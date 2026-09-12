@@ -6,6 +6,7 @@ from io import StringIO
 
 from laser_prynter import pp
 
+
 class TestJSONDefault(unittest.TestCase):
     def test_str(self) -> None:
         'Print a dict as JSON'

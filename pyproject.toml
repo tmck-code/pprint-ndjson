@@ -1,6 +1,6 @@
 [project]
 name = "laser-prynter"
-version = "0.12.0"
+version = "0.12.1"
 authors = [{ name = "tmck-code", email = "tmck01@gmail.com" }]
 description = "terminal/cli/python helpers for colour and pretty-printing"
 readme = "README.md"
@@ -27,15 +27,13 @@ Issues = "https://github.com/tmck-code/laser-prynter/issues"
 
 [tool.ruff]
 exclude = ["bin/", ".venv/"]
-line-length = 100
-# preview = true
+line-length = 120
+preview = true
 
 [tool.ruff.lint]
 fixable = ["ALL"]
-dummy-variable-rgx = "^_$" # ignore variables named "_".
-ignore = [
-  "E701", # ignore "multiple statements on one line (colon)"
-]
+# ignore variable names that start with an underscore or are all underscores
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]
 quote-style = "preserve" # keep existing quote style (single or double)

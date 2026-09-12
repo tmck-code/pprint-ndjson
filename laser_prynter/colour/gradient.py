@@ -3,23 +3,23 @@ from __future__ import annotations
 import operator
 import os
 import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
-from functools import partial
-from itertools import chain, repeat, starmap
-from typing import Dict, Iterable, Iterator, List, Literal, TypeAlias
+from itertools import chain, repeat
+from typing import Literal
 
 from laser_prynter.colour import c
 
-Cell: TypeAlias = c.ANSIColour
-Row = List[Cell]
+type Cell = c.ANSIColour
+Row = list[Cell]
 
 
 @dataclass
 class Face:
-    rows: List[Row]
+    rows: list[Row]
     with_rotations: bool = True
-    rotations: List[Face] = field(default_factory=list)
-    flipped_rotations: List[Face] = field(default_factory=list)
+    rotations: list[Face] = field(default_factory=list)
+    flipped_rotations: list[Face] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.with_rotations:
@@ -27,7 +27,7 @@ class Face:
             self.flipped_rotations = [Face._rot90(self.rows, n, flip=True) for n in range(4)]
 
     @staticmethod
-    def _rot90(rows: List[Row], n: int = 1, flip: bool = False) -> Face:
+    def _rot90(rows: list[Row], n: int = 1, flip: bool = False) -> Face:
         'Rotate a matrix 90 degrees, n times, optionally flipped'
         if flip:
             rows = list(reversed(rows))
@@ -54,16 +54,14 @@ class Face:
     def empty_face(width: int = 6) -> Face:
         return Face([[c.from_ansi(256)] * width] * width)
 
-    def iter_s(
-        self, padding_top: int = 0, padding_bottom: int = 0, cell_width: int = 15
-    ) -> Iterable[str]:
-        for row in self.__iter__():
+    def iter_s(self, padding_top: int = 0, padding_bottom: int = 0, cell_width: int = 15) -> Iterable[str]:
+        for row in iter(self):
             p = [cell.colorise(' ' * cell_width) for cell in row]
             # r = [cell.colorise(f'{cell.ansi_n:^{cell_width}}') for cell in row]
-            r = [cell.colorise(f'{str(cell.rgb):^{cell_width}}') for cell in row]
+            r = [cell.colorise(f'{cell.rgb!s:^{cell_width}}') for cell in row]
 
-            for r in chain(repeat(p, padding_top), [r], repeat(p, padding_bottom)):
-                yield ''.join(r)
+            for row_str in chain(repeat(p, padding_top), [r], repeat(p, padding_bottom)):
+                yield ''.join(row_str)
 
     def print(self, padding_top: int = 0, padding_bottom: int = 0, cell_width: int = 6) -> None:
         'Print the face, with optional cell padding top/bottom to make it more "square"'
@@ -88,8 +86,7 @@ class Faces:
 
     def __iter__(self) -> Iterator[Face]:
         for face_row in self.faces:
-            for face in face_row:
-                yield face
+            yield from face_row
 
     def __next__(self) -> Face:
         return next(self.__iter__())
@@ -99,13 +96,9 @@ class Faces:
             for row in zip(*face_row):
                 yield list(row)
 
-    def iter_s(
-        self, padding_top: int = 0, padding_bottom: int = 0, cell_width: int = 6
-    ) -> Iterable[str]:
+    def iter_s(self, padding_top: int = 0, padding_bottom: int = 0, cell_width: int = 6) -> Iterable[str]:
         for face_row in self.faces:
-            for row in zip(*[
-                face.iter_s(padding_top, padding_bottom, cell_width) for face in face_row
-            ]):
+            for row in zip(*[face.iter_s(padding_top, padding_bottom, cell_width) for face in face_row]):
                 yield ''.join(row)
 
     def as_str(self, padding_top: int = 0, padding_bottom: int = 0, cell_width: int = 6) -> str:
@@ -121,7 +114,7 @@ class Faces:
 
 
 def distance(c1: tuple[int, int, int], c2: tuple[int, int, int]) -> float:
-    return float(abs(sum(starmap(operator.sub, zip(c2, c1)))))
+    return float(abs(sum(map(operator.sub, c2, c1))))
 
 
 @dataclass
@@ -150,31 +143,20 @@ class RGBCube:
         elif edge_type == 'rhs':
             edge = [r[-1] for r in face]
 
-        for face in self.faces:
+        for candidate in self.faces:
             for rot in range(4):
                 for flip in (False, True):
-                    if edge_type == 'ts' and RGBCube.compare_rows(
-                        face.rot90(rot, flip=flip)[-1], edge
+                    if (
+                        (edge_type == 'ts' and RGBCube.compare_rows(candidate.rot90(rot, flip=flip)[-1], edge))
+                        or (edge_type == 'bs' and RGBCube.compare_rows(candidate.rot90(rot, flip=flip)[0], edge))
+                        or (edge_type == 'lhs' and RGBCube.compare_rows([r[-1] for r in candidate.rot90(rot, flip=flip)], edge))
+                        or (edge_type == 'rhs' and RGBCube.compare_rows([r[0] for r in candidate.rot90(rot, flip=flip)], edge))
                     ):
-                        return face.rot90(rot, flip=flip)
-                    elif edge_type == 'bs' and RGBCube.compare_rows(
-                        face.rot90(rot, flip=flip)[0], edge
-                    ):
-                        return face.rot90(rot, flip=flip)
-                    elif edge_type == 'lhs' and RGBCube.compare_rows(
-                        [r[-1] for r in face.rot90(rot, flip=flip)], edge
-                    ):
-                        return face.rot90(rot, flip=flip)
-                    elif edge_type == 'rhs' and RGBCube.compare_rows(
-                        [r[0] for r in face.rot90(rot, flip=flip)], edge
-                    ):
-                        return face.rot90(rot, flip=flip)
+                        return candidate.rot90(rot, flip=flip)
         raise ValueError('No face with matching edge found')
 
     @staticmethod
-    def from_ranges(
-        c1: Literal[c._RGB_COMPONENT], c2: c._RGB_COMPONENT, c3: c._RGB_COMPONENT
-    ) -> RGBCube:
+    def from_ranges(c1: Literal[c._RGB_COMPONENT], c2: c._RGB_COMPONENT, c3: c._RGB_COMPONENT) -> RGBCube:
         '''
         Create a 6x6x6 cube of RGB values, where each face is a 6x6 grid of cells.
         Takes an 'order' of RGB components, where
@@ -197,7 +179,7 @@ class RGBCube:
 
 @dataclass
 class RGBCubeCollection:
-    cubes: Dict[str, RGBCube]
+    cubes: dict[str, RGBCube]
 
     def __post_init__(self) -> None:
         self.width = os.get_terminal_size().columns
@@ -209,8 +191,8 @@ class RGBCubeCollection:
         padding_bottom: int = 0,
         cell_width: int = 6,
     ) -> None:
-        groups: List[Dict[str, RGBCube]] = []
-        current_group: Dict[str, RGBCube] = {}
+        groups: list[dict[str, RGBCube]] = []
+        current_group: dict[str, RGBCube] = {}
         for name, cube in self.cubes.items():
             if sum(v.str_width for v in current_group.values()) + cube.str_width <= self.width:
                 current_group[name] = cube
@@ -223,15 +205,11 @@ class RGBCubeCollection:
             for name, cube in g.items():
                 print(f'{name:<{cube.str_width}s}', end=grid_sep)
             print()
-            for rows in zip(*[
-                cube.faces.iter_s(padding_top, padding_bottom, cell_width) for n, cube in g.items()
-            ]):
+            for rows in zip(*[cube.faces.iter_s(padding_top, padding_bottom, cell_width) for cube in g.values()]):
                 print(grid_sep.join(rows))
 
 
-def find_face_with_edge(
-    collection: RGBCubeCollection, face_name: str, face: Face, edge_type: str
-) -> tuple[Face, str]:
+def find_face_with_edge(collection: RGBCubeCollection, face_name: str, face: Face, edge_type: str) -> tuple[Face, str]:
     for n, cube in collection.cubes.items():
         if n == face_name:
             continue
@@ -240,16 +218,15 @@ def find_face_with_edge(
             return f, n
         except ValueError:
             continue
-    else:
-        raise ValueError('No face with matching edge found')
+    raise ValueError('No face with matching edge found')
 
 
 def create_cube(f1: Face, f1_name: str, cube_collection: RGBCubeCollection) -> None:
-    f2, f2_name = find_face_with_edge(cube_collection, f1_name, f1, 'lhs')
+    f2, _ = find_face_with_edge(cube_collection, f1_name, f1, 'lhs')
     f3, f3_name = find_face_with_edge(cube_collection, f1_name, f1, 'bs')
-    f4, f4_name = find_face_with_edge(cube_collection, f1_name, f1, 'ts')
-    f5, f5_name = find_face_with_edge(cube_collection, f3_name, f3, 'rhs')
-    f6, f6_name = find_face_with_edge(cube_collection, f3_name, f3, 'bs')
+    f4, _ = find_face_with_edge(cube_collection, f1_name, f1, 'ts')
+    f5, _ = find_face_with_edge(cube_collection, f3_name, f3, 'rhs')
+    f6, _ = find_face_with_edge(cube_collection, f3_name, f3, 'bs')
 
     faces = [
         [Face.empty_face(6), f4, Face.empty_face(6)],
@@ -286,30 +263,11 @@ class Gradient:
 
     @staticmethod
     def interp(v0: float, v1: float, n_steps: int) -> list[float]:
-        return list(
-            map(
-                partial(Gradient.lerp, v0, v1),
-                list(
-                    map(
-                        lambda x: x / (n_steps - 1),
-                        range(0, n_steps),
-                    )
-                ),
-            )
-        )
+        return [Gradient.lerp(v0, v1, i / (n_steps - 1)) for i in range(n_steps)]
 
     @staticmethod
-    def interp_xyz(
-        c1: tuple[int, int, int], c2: tuple[int, int, int], n_steps: int
-    ) -> list[tuple[float, ...]]:
-        return list(
-            zip(
-                *starmap(
-                    Gradient.interp,
-                    zip(c1, c2, repeat(n_steps)),
-                )
-            )
-        )
+    def interp_xyz(c1: tuple[int, int, int], c2: tuple[int, int, int], n_steps: int) -> list[tuple[float, ...]]:
+        return list(zip(*map(Gradient.interp, c1, c2, repeat(n_steps))))
 
 
 @dataclass

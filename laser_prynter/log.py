@@ -26,15 +26,17 @@ usage examples to log messages:
     ```
 '''
 
-from datetime import datetime
 import json
 import logging
-from logging.handlers import  TimedRotatingFileHandler
 import os
 import sys
-from typing import Any, TextIO
+from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
+from types import MappingProxyType
+from typing import Any, TextIO, cast
 
 from laser_prynter.pp import _json_default
+
 
 class LogLevel:
     'An enum type for log levels.'
@@ -50,12 +52,12 @@ DEFAULT_LOG_LEVEL = LogLevel.INFO
 
 class LogFormatter(logging.Formatter):
     'Custom log formatter that formats log messages as JSON, aka "Structured Logging".'
-    def __init__(self, defaults: dict = {}):
+    def __init__(self, defaults: dict | None = None):
         '''
         Initializes the log formatter with optional default context.
         - `defaults` is a dictionary of default context values to include in every log message.
         '''
-        self.defaults = defaults
+        self.defaults = defaults if defaults is not None else {}
         super().__init__()
 
     def format(self, record: logging.LogRecord) -> str:
@@ -89,9 +91,9 @@ class LogFormatter(logging.Formatter):
 
 def _getLogger(
     name:     str,
-    level:    int                   = logging.CRITICAL,
-    handlers: list[logging.Handler] = [],
-    context:  dict                  = {},
+    level:    int                          = logging.CRITICAL,
+    handlers: list[logging.Handler] | None = None,
+    context:  MappingProxyType[str, Any]   = MappingProxyType({}),
 ) -> logging.Logger:
     '''
     Creates a logger with the given name, level, and handlers.
@@ -99,6 +101,9 @@ def _getLogger(
     - This function requires the handlers to be initialized when passed as args.
     - the same log level is applied to all handlers.
     '''
+
+    handlers = handlers if handlers is not None else []
+    context  = context if context is not None else {}
 
     # create the root logger
     logger = logging.getLogger()
@@ -126,16 +131,16 @@ def _getLogger(
 
     if logger.handlers:
         # only set the first handler to use the custom formatter
-        logger.handlers[0].setFormatter(LogFormatter(defaults=context))
+        logger.handlers[0].setFormatter(LogFormatter(defaults=cast(dict, context)))
 
     return logger
 
 def getLogger(
     name:     str,
-    level:    int                 = -1,
-    stream:   TextIO       = sys.stdout,
-    files:    dict[int, str] = {},
-    context:  dict                = {},
+    level:    int                        = logging.CRITICAL,
+    stream:   TextIO                     = sys.stdout,
+    files:    MappingProxyType[int, str] = MappingProxyType({}),
+    context:  MappingProxyType[str, Any] = MappingProxyType({}),
 ) -> logging.Logger:
     '''
     Creates a logger with the given name, level, and handlers.
