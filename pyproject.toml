@@ -1,6 +1,6 @@
 [project]
 name = "laser-prynter"
-version = "0.12.0"
+version = "0.12.1"
 authors = [{ name = "tmck-code", email = "tmck01@gmail.com" }]
 description = "terminal/cli/python helpers for colour and pretty-printing"
 readme = "README.md"
