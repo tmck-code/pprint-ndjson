@@ -27,7 +27,7 @@ Issues = "https://github.com/tmck-code/laser-prynter/issues"
 
 [tool.ruff]
 exclude = ["bin/", ".venv/"]
-line-length = 100
+line-length = 120
 preview = true
 
 [tool.ruff.lint]
