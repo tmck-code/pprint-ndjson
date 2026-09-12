@@ -8,6 +8,8 @@ RUFF_STATUS=0
 MYPY_STATUS=0
 TEST_STATUS=0
 
+. ./.venv/bin/activate
+
 echo -e "\n\e[1;97mRunning pre-commit checks on staged Python files:\e[0m\n$fpaths\n"
 
 echo -e "\e[1;93m> ruff check\e[0m"
